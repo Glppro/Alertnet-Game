@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alertnet Game Studio</title>
+    <style>
+        body {
+            margin: 0; padding: 0; background: #ffffff; color: #000;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            height: 100vh; overflow: hidden;
+        }
+        .container { text-align: center; width: 90%; max-width: 800px; transition: all 0.5s ease; }
+        h1 { font-weight: 100; letter-spacing: 12px; text-transform: uppercase; margin-bottom: 50px; }
+        
+        #promptInput {
+            width: 100%; border: none; border-bottom: 1px solid #ddd;
+            padding: 15px; font-size: 1.5rem; outline: none; text-align: center;
+            font-weight: 200; transition: border-color 0.3s; background: transparent;
+        }
+        #promptInput:focus { border-bottom-color: #000; }
+
+        .btn-generate {
+            margin-top: 40px; padding: 12px 50px; background: #000; color: #fff;
+            border: none; cursor: pointer; letter-spacing: 2px; font-size: 0.8rem;
+            transition: opacity 0.3s ease;
+        }
+        .btn-generate:hover { opacity: 0.8; }
+        .btn-generate:disabled { background: #ccc; cursor: not-allowed; }
+
+        #status { margin-top: 20px; font-size: 0.8rem; color: #888; min-height: 20px; }
+
+        #gameWrapper {
+            display: none; width: 100%; height: 80vh; 
+            border: 1px solid #eee; margin-top: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+        }
+        iframe { width: 100%; height: 100%; border: none; background: #fff;}
+    </style>
+</head>
+<body>
+
+    <div id="mainUI" class="container">
+        <h1>Alertnet</h1>
+        <input type="text" id="promptInput" placeholder="Descrivi il tuo gioco...">
+        <div id="status"></div>
+        <button id="genBtn" class="btn-generate" onclick="generateGame()">GENERA GIOCO</button>
+    </div>
+
+    <div id="gameWrapper" class="container">
+        <iframe id="gameFrame"></iframe>
+        <button class="btn-generate" onclick="location.reload()" style="margin-top: 10px;">CREA UN ALTRO</button>
+    </div>
+
+    <script>
+        // INSERISCI QUI LA TUA CHIAVE API DI GOOGLE GEMINI
+        const GEMINI_API_KEY = "AIzaSyAZziNTfDeuAv79FNx2GfFciDnP7yjErZA"; 
+
+        // Recupera l'idea inviata dal bot Discord
+        const urlParams = new URLSearchParams(window.location.search);
+        const botPrompt = urlParams.get('prompt');
+        if (botPrompt) {
+            document.getElementById('promptInput').value = decodeURIComponent(botPrompt);
+        }
+
+        async function generateGame() {
+            const prompt = document.getElementById('promptInput').value;
+            const btn = document.getElementById('genBtn');
+            const status = document.getElementById('status');
+            
+            if (!prompt) return alert("Scrivi un'idea per il tuo gioco!");
+
+            btn.disabled = true;
+            status.innerText = "L'IA di Alertnet sta programmando il gioco... attendi.";
+
+            try {
+                // Chiamata all'API di Gemini 1.5 Flash per la generazione di codice veloce
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: `Scrivi il codice per un mini-gioco. Deve essere in un SINGOLO file HTML contenente tutto (CSS, HTML5 Canvas, JS). L'idea del gioco è: ${prompt}. Regole grafiche: sfondo bianco, stile minimale. Regole tecniche: i controlli devono usare mouse o tastiera. RISPONDI ESCLUSIVAMENTE CON IL CODICE HTML FINALE, senza formattazione markdown e senza spiegazioni extra.`
+                            }]
+                        }]
+                    })
+                });
+
+                const data = await response.json();
+                
+                // Estrai e pulisci il codice generato
+                let rawCode = data.candidates[0].content.parts[0].text;
+                const cleanCode = rawCode.replace(/```html|```/g, "").trim();
+
+                // Cambia interfaccia e mostra il gioco
+                document.getElementById('mainUI').style.display = "none";
+                const wrapper = document.getElementById('gameWrapper');
+                wrapper.style.display = "block";
+
+                // Inietta il codice direttamente nell'iframe per eseguirlo in modo sicuro
+                const iframe = document.getElementById('gameFrame');
+                const doc = iframe.contentWindow.document;
+                doc.open();
+                doc.write(cleanCode);
+                doc.close();
+
+            } catch (err) {
+                console.error(err);
+                status.innerText = "Errore durante la creazione. Controlla l'API Key o riprova.";
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
