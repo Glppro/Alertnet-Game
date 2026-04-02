@@ -3,111 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Alertnet Game Studio</title>
+    <title>Alertnet | Engine</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body {
-            margin: 0; padding: 0; background: #ffffff; color: #000;
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            height: 100vh; overflow: hidden;
-        }
-        .container { text-align: center; width: 90%; max-width: 800px; transition: all 0.5s ease; }
-        h1 { font-weight: 100; letter-spacing: 12px; text-transform: uppercase; margin-bottom: 50px; }
-        
-        #promptInput {
-            width: 100%; border: none; border-bottom: 1px solid #ddd;
-            padding: 15px; font-size: 1.5rem; outline: none; text-align: center;
-            font-weight: 200; transition: border-color 0.3s; background: transparent;
-        }
-        #promptInput:focus { border-bottom-color: #000; }
-
-        .btn-generate {
-            margin-top: 40px; padding: 12px 50px; background: #000; color: #fff;
-            border: none; cursor: pointer; letter-spacing: 2px; font-size: 0.8rem;
-            transition: opacity 0.3s ease;
-        }
-        .btn-generate:hover { opacity: 0.8; }
-        .btn-generate:disabled { background: #ccc; cursor: not-allowed; }
-
-        #status { margin-top: 20px; font-size: 0.8rem; color: #888; min-height: 20px; }
-
-        #gameWrapper {
-            display: none; width: 100%; height: 80vh; 
-            border: 1px solid #eee; margin-top: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-        }
-        iframe { width: 100%; height: 100%; border: none; background: #fff;}
+        :root { --accent: #000000; --bg: #ffffff; }
+        body, html { margin: 0; padding: 0; height: 100%; background: var(--bg); font-family: sans-serif; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        #mainUI { text-align: center; width: 100%; max-width: 600px; padding: 20px; }
+        h1 { font-weight: 200; font-size: 3rem; letter-spacing: 15px; text-transform: uppercase; margin-bottom: 40px; }
+        #promptInput { width: 100%; border: none; border-bottom: 2px solid #eee; padding: 15px; font-size: 1.2rem; outline: none; text-align: center; margin-bottom: 20px; }
+        .btn-gen { background: var(--accent); color: white; border: none; padding: 15px 40px; cursor: pointer; letter-spacing: 3px; text-transform: uppercase; }
+        #status { margin-top: 25px; font-size: 0.8rem; color: #aaa; }
+        #gameView { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; display: none; flex-direction: column; z-index: 100; }
+        .game-header { padding: 15px; display: flex; justify-content: space-between; border-bottom: 1px solid #eee; }
+        iframe { flex-grow: 1; border: none; width: 100%; height: 100%; }
     </style>
 </head>
 <body>
 
-    <div id="mainUI" class="container">
+    <div id="mainUI">
         <h1>Alertnet</h1>
-        <input type="text" id="promptInput" placeholder="Descrivi il tuo gioco...">
-        <div id="status"></div>
-        <button id="genBtn" class="btn-generate" onclick="generateGame()">GENERA GIOCO</button>
+        <input type="text" id="promptInput" placeholder="DESCRIVI IL TUO MONDO...">
+        <button id="genBtn" class="btn-gen" onclick="generateGame()">GENERA GIOCO</button>
+        <div id="status">Pronto all'azione</div>
     </div>
 
-    <div id="gameWrapper" class="container">
+    <div id="gameView">
+        <div class="game-header">
+            <span>ALERTNET ENGINE</span>
+            <button onclick="location.reload()">INDIETRO</button>
+        </div>
         <iframe id="gameFrame"></iframe>
-        <button class="btn-generate" onclick="location.reload()" style="margin-top: 10px;">CREA UN ALTRO</button>
     </div>
 
     <script>
-        // INSERISCI QUI LA TUA CHIAVE API DI GOOGLE GEMINI
-        const GEMINI_API_KEY = "AIzaSyAZziNTfDeuAv79FNx2GfFciDnP7yjErZA"; 
+        // CONFIGURAZIONE
+        const GEMINI_API_KEY = "AIzaSyBEnVeLGo7OERB0e6tFp_pC5PQThhcyj3M";
+        const SUPABASE_URL = "https://nhtswfhokhyqdhjduwj.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_lhYukOcXbOZpUnPsRTVdvQ_GkAmKwq9"; // Assicurati sia questa la tua KEY anonima
 
-        // Recupera l'idea inviata dal bot Discord
-        const urlParams = new URLSearchParams(window.location.search);
-        const botPrompt = urlParams.get('prompt');
-        if (botPrompt) {
-            document.getElementById('promptInput').value = decodeURIComponent(botPrompt);
-        }
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         async function generateGame() {
             const prompt = document.getElementById('promptInput').value;
             const btn = document.getElementById('genBtn');
             const status = document.getElementById('status');
-            
-            if (!prompt) return alert("Scrivi un'idea per il tuo gioco!");
+            if(!prompt) return;
 
             btn.disabled = true;
-            status.innerText = "L'IA di Alertnet sta programmando il gioco... attendi.";
+            status.innerText = "IA sta programmando... attendi...";
 
             try {
-                // Chiamata all'API di Gemini 1.5 Flash per la generazione di codice veloce
                 const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        contents: [{
-                            parts: [{
-                                text: `Scrivi il codice per un mini-gioco. Deve essere in un SINGOLO file HTML contenente tutto (CSS, HTML5 Canvas, JS). L'idea del gioco è: ${prompt}. Regole grafiche: sfondo bianco, stile minimale. Regole tecniche: i controlli devono usare mouse o tastiera. RISPONDI ESCLUSIVAMENTE CON IL CODICE HTML FINALE, senza formattazione markdown e senza spiegazioni extra.`
-                            }]
-                        }]
+                        contents: [{ parts: [{ text: `Crea un gioco HTML5 Canvas realistico tema: ${prompt}. Rispondi SOLO con il codice HTML completo.` }] }]
                     })
                 });
 
                 const data = await response.json();
                 
-                // Estrai e pulisci il codice generato
-                let rawCode = data.candidates[0].content.parts[0].text;
-                const cleanCode = rawCode.replace(/```html|```/g, "").trim();
+                // Controllo se Gemini ha risposto correttamente
+                if(!data.candidates) {
+                    throw new Error("La chiave API potrebbe essere limitata o errata.");
+                }
 
-                // Cambia interfaccia e mostra il gioco
+                let code = data.candidates[0].content.parts[0].text;
+                code = code.replace(/```html|```/g, "").trim();
+
+                // Salvataggio (opzionale, se fallisce prosegue comunque)
+                try {
+                    await supabaseClient.from('giochi').insert([{ nome: prompt, codice: code, autore: "User" }]);
+                } catch(e) { console.log("Database non pronto, ma avvio il gioco..."); }
+
+                // Avvio Gioco
                 document.getElementById('mainUI').style.display = "none";
-                const wrapper = document.getElementById('gameWrapper');
-                wrapper.style.display = "block";
-
-                // Inietta il codice direttamente nell'iframe per eseguirlo in modo sicuro
-                const iframe = document.getElementById('gameFrame');
-                const doc = iframe.contentWindow.document;
-                doc.open();
-                doc.write(cleanCode);
-                doc.close();
+                document.getElementById('gameView').style.display = "flex";
+                const frame = document.getElementById('gameFrame');
+                const d = frame.contentWindow.document;
+                d.open(); d.write(code); d.close();
 
             } catch (err) {
                 console.error(err);
-                status.innerText = "Errore durante la creazione. Controlla l'API Key o riprova.";
+                status.innerText = "ERRORE: " + err.message;
                 btn.disabled = false;
             }
         }
